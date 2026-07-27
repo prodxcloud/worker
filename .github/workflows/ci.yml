@@ -1,0 +1,85 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        cc: [gcc-14, clang]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install toolchain
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq gcc-14 clang
+
+      - name: Build
+        run: make CC=${{ matrix.cc }} all
+
+      - name: ABI layout
+        run: ./build/vxworker abi
+
+      - name: Kernel capability probe
+        # Exit 2 means "degraded" — a GitHub runner may deny some namespaces.
+        # Report it, do not fail the build on it.
+        run: ./build/vxworker probe || true
+
+      - name: Selftest
+        run: ./build/vxworker selftest
+
+      # The namespace and cgroup suites need CAP_SYS_ADMIN.  They report SKIP
+      # (exit 77) without it, so run the suite both ways: unprivileged proves the
+      # skip path is honest, root proves the isolation actually works.
+      - name: Test (unprivileged)
+        run: make CC=${{ matrix.cc }} test
+
+      - name: Test (root — exercises namespaces and cgroups)
+        run: sudo make CC=${{ matrix.cc }} test
+
+  sanitizers:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install toolchain
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq gcc-14
+
+      - name: AddressSanitizer + UndefinedBehaviorSanitizer
+        run: sudo make CC=gcc-14 asan
+
+      - name: ThreadSanitizer
+        # run_tsan.sh fails on a data-race report and tolerates TSan's
+        # teardown abort on high-ASLR kernels — see the script for why.
+        run: sudo make CC=gcc-14 tsan
+
+  bench:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update -qq && sudo apt-get install -y -qq gcc-14
+      - name: Benchmark
+        run: make CC=gcc-14 bench
+
+  portability:
+    # The build must refuse a non-Linux kernel rather than pretend to be portable.
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build must fail with a clear message
+        run: |
+          if make all 2>err.txt; then
+            echo "::error::build succeeded on macOS; it should have refused"
+            exit 1
+          fi
+          grep -q "targets Linux only" err.txt
+          echo "correctly refused: $(cat err.txt)"
