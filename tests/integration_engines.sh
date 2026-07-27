@@ -135,6 +135,25 @@ if [ -x "$IRON" ]; then
 fi
 
 # --------------------------------------------------------------------------
+banner "the natural invocation must not silently no-op"
+# `ion run <file>` used to drop the positional and read an empty stdin: zero
+# tasks, exit 0.  That made a typo look like success and a corrupt frame look
+# accepted, so it is worth asserting from outside ion as well as inside it.
+if [ -x "$ION" ]; then
+  if "$ION" run "$TMP/ion_task.bin" --output /dev/null >/dev/null 2>&1; then
+    echo "ok  : ion accepts a positional input path"
+  else
+    echo "FAIL: ion rejected a positional input path"
+    fails=$((fails + 1))
+  fi
+  if "$ION" run "$TMP/corrupt.bin" --output /dev/null >/dev/null 2>&1; then
+    echo "FAIL: ion silently accepted a corrupt frame via the positional form"
+    fails=$((fails + 1))
+  else
+    echo "ok  : the positional form still rejects a corrupt frame"
+  fi
+fi
+
 banner "a truncated payload must not be read past the end"
 head -c 100 "$TMP/ion_task.bin" > "$TMP/short.bin"   # header claims 45 payload bytes, only 7 present
 if $VX decode-task "$TMP/short.bin" >/dev/null 2>&1; then
