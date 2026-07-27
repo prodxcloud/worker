@@ -36,8 +36,8 @@ size_t vx_task_wire_len(const vx_task_header_t *hdr) {
 }
 
 long vx_task_encode(void *buf, size_t cap, uint64_t task_id, const char *tenant_id,
-                    vx_engine_type_t engine, uint32_t memory_limit_mb,
-                    uint32_t cpu_quota_us, const void *payload, size_t payload_len) {
+                    vx_engine_type_t engine, uint32_t memory_limit_mb, uint32_t cpu_quota_us,
+                    const void *payload, size_t payload_len) {
     if (buf == NULL) return VX_ERR_INVALID_ARG;
     if (payload_len > VX_MAX_PAYLOAD_LEN) return VX_ERR_PAYLOAD_TOO_LARGE;
     if (payload_len > 0 && payload == NULL) return VX_ERR_INVALID_ARG;
@@ -115,9 +115,7 @@ int vx_task_describe(const vx_task_header_t *hdr, char *out, size_t out_len) {
     if (hdr == NULL || out == NULL) return VX_ERR_INVALID_ARG;
     char tenant[VX_TENANT_ID_LEN + 1];
     vx_task_tenant(hdr, tenant, sizeof(tenant));
-    return snprintf(out, out_len,
-                    "task=%llu tenant=%s engine=%s mem=%uMiB cpu=%uus payload=%llub",
+    return snprintf(out, out_len, "task=%llu tenant=%s engine=%s mem=%uMiB cpu=%uus payload=%llub",
                     (unsigned long long)hdr->task_id, tenant, vx_engine_str(hdr->engine),
-                    hdr->memory_limit_mb, hdr->cpu_quota_us,
-                    (unsigned long long)hdr->payload_len);
+                    hdr->memory_limit_mb, hdr->cpu_quota_us, (unsigned long long)hdr->payload_len);
 }

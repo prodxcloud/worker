@@ -74,8 +74,8 @@ int main(void) {
     }
     uint64_t elapsed = vx_now_us() - t0;
     double ops = (double)ITERS / ((double)elapsed / 1e6);
-    printf("\n  same-thread push+pop : %.2f M round-trips/s  (%.0f ns per round-trip)\n",
-           ops / 1e6, (double)elapsed * 1000.0 / (double)ITERS);
+    printf("\n  same-thread push+pop : %.2f M round-trips/s  (%.0f ns per round-trip)\n", ops / 1e6,
+           (double)elapsed * 1000.0 / (double)ITERS);
     printf("  throughput           : %.2f GiB/s payload\n",
            ((double)ITERS * PAYLOAD * 2.0) / ((double)elapsed / 1e6) / (1024.0 * 1024.0 * 1024.0));
 
@@ -127,9 +127,8 @@ int main(void) {
     vx_ring_stats(r2, &stats);
     printf("\n  1 producer -> 1 consumer thread: %.2f M records/s (%.0f ns per record)\n",
            ops / 1e6, (double)elapsed * 1000.0 / (double)ITERS);
-    printf("  full-ring stalls: %llu of %u pushes (%.2f%%)\n",
-           (unsigned long long)stats.push_full, ITERS,
-           100.0 * (double)stats.push_full / (double)ITERS);
+    printf("  full-ring stalls: %llu of %u pushes (%.2f%%)\n", (unsigned long long)stats.push_full,
+           ITERS, 100.0 * (double)stats.push_full / (double)ITERS);
 
     vx_ring_close(r2);
     vx_ring_unlink(BENCH_RING);

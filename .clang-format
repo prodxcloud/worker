@@ -1,0 +1,26 @@
+# Matches the style already in the tree, so `make format` is a no-op on
+# unmodified files rather than a whole-repo rewrite.
+BasedOnStyle: LLVM
+Language: Cpp
+Standard: c++11
+
+ColumnLimit: 100
+IndentWidth: 4
+TabWidth: 4
+UseTab: Never
+ContinuationIndentWidth: 4
+
+AlignAfterOpenBracket: Align
+AllowShortIfStatementsOnASingleLine: WithoutElse
+AllowShortLoopsOnASingleLine: true
+AllowShortFunctionsOnASingleLine: Inline
+AllowShortBlocksOnASingleLine: Empty
+BreakBeforeBraces: Attach
+IndentCaseLabels: false
+PointerAlignment: Right
+SpaceAfterCStyleCast: false
+SortIncludes: CaseSensitive
+IncludeBlocks: Preserve
+KeepEmptyLinesAtTheStartOfBlocks: false
+MaxEmptyLinesToKeep: 1
+ReflowComments: false

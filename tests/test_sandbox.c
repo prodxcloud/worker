@@ -85,14 +85,16 @@ int main(int argc, char **argv) {
     VXT_BEGIN("namespace + cgroup sandbox");
 
     ssize_t sl = readlink("/proc/self/exe", self_path, sizeof(self_path) - 1);
-    if (sl > 0) self_path[sl] = '\0';
-    else snprintf(self_path, sizeof(self_path), "%s", argv[0]);
+    if (sl > 0)
+        self_path[sl] = '\0';
+    else
+        snprintf(self_path, sizeof(self_path), "%s", argv[0]);
 
     vx_sandbox_caps_t caps;
     VXT_EQ_INT(vx_sandbox_probe(&caps), VX_OK, "probe");
     if (!caps.userns || !caps.pidns)
-        VXT_SKIP("kernel denies CLONE_NEWUSER/CLONE_NEWPID (userns=%d pidns=%d)",
-                 (int)caps.userns, (int)caps.pidns);
+        VXT_SKIP("kernel denies CLONE_NEWUSER/CLONE_NEWPID (userns=%d pidns=%d)", (int)caps.userns,
+                 (int)caps.pidns);
     if (!vxt_is_root()) VXT_SKIP("needs root to write uid_map and create cgroups");
 
     printf("    caps: userns=%d pidns=%d netns=%d cgroup2=%d cgroup.kill=%d pidfd=%d\n",
@@ -182,8 +184,8 @@ int main(int argc, char **argv) {
             fclose(f);
         }
         unsigned inner = 9999, outer = 9999, count = 0;
-        VXT_CHECK(sscanf(line, "%u %u %u", &inner, &outer, &count) == 3,
-                  "parsed uid_map \"%s\"", line);
+        VXT_CHECK(sscanf(line, "%u %u %u", &inner, &outer, &count) == 3, "parsed uid_map \"%s\"",
+                  line);
         VXT_EQ_INT(inner, 0, "namespace uid 0 is mapped");
         VXT_EQ_INT(outer, 65534, "maps to host uid 65534");
         VXT_EQ_INT(count, 1, "exactly one uid is mapped");

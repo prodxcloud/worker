@@ -30,8 +30,8 @@ size_t vx_task_wire_len(const vx_task_header_t *hdr);
 /* Serialise a task into buf.  Returns the number of bytes written, or a
  * negative vx_status_t if buf is too small. */
 long vx_task_encode(void *buf, size_t cap, uint64_t task_id, const char *tenant_id,
-                    vx_engine_type_t engine, uint32_t memory_limit_mb,
-                    uint32_t cpu_quota_us, const void *payload, size_t payload_len);
+                    vx_engine_type_t engine, uint32_t memory_limit_mb, uint32_t cpu_quota_us,
+                    const void *payload, size_t payload_len);
 
 /* tenant_id is NUL-padded rather than NUL-terminated when it fills all 64
  * bytes, so it needs a bounded copy to be printed safely.  out must hold at

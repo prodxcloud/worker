@@ -41,14 +41,14 @@ extern "C" {
 typedef struct vx_ring vx_ring_t; /* opaque per-process handle */
 
 typedef struct {
-    uint32_t slot_count;   /* rounded up to a power of two                 */
-    uint32_t slot_bytes;   /* usable payload bytes per slot                */
-    uint64_t produced;     /* records pushed since creation                */
-    uint64_t consumed;     /* records popped since creation                */
-    uint64_t depth;        /* produced - consumed                          */
-    uint64_t push_full;    /* pushes rejected because the ring was full    */
-    uint64_t map_bytes;    /* size of the shared mapping                   */
-    bool lock_free;        /* atomics on this platform are truly lock-free */
+    uint32_t slot_count; /* rounded up to a power of two                 */
+    uint32_t slot_bytes; /* usable payload bytes per slot                */
+    uint64_t produced;   /* records pushed since creation                */
+    uint64_t consumed;   /* records popped since creation                */
+    uint64_t depth;      /* produced - consumed                          */
+    uint64_t push_full;  /* pushes rejected because the ring was full    */
+    uint64_t map_bytes;  /* size of the shared mapping                   */
+    bool lock_free;      /* atomics on this platform are truly lock-free */
 } vx_ring_stats_t;
 
 /* Create (or truncate) a ring.  slot_count is rounded up to a power of two;
@@ -71,8 +71,7 @@ vx_status_t vx_ring_push_task(vx_ring_t *r, const vx_task_header_t *hdr);
 
 /* Convenience: pop into a caller buffer and validate it as a task header.
  * On success *out points into buf. */
-vx_status_t vx_ring_pop_task(vx_ring_t *r, void *buf, uint32_t cap,
-                             const vx_task_header_t **out);
+vx_status_t vx_ring_pop_task(vx_ring_t *r, void *buf, uint32_t cap, const vx_task_header_t **out);
 
 void vx_ring_stats(const vx_ring_t *r, vx_ring_stats_t *out);
 uint64_t vx_ring_depth(const vx_ring_t *r);

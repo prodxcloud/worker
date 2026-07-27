@@ -62,8 +62,8 @@ extern "C" {
 /* ------------------------------------------------------------------------- */
 
 typedef enum {
-    ENGINE_ION = 0x01,  /* Micro-worker  (Rust 2024 / Tokio) — <1ms, <8MB RSS */
-    ENGINE_IRON = 0x02  /* Heavy worker  (C++23 / io_uring)  — durable tasks   */
+    ENGINE_ION = 0x01, /* Micro-worker  (Rust 2024 / Tokio) — <1ms, <8MB RSS */
+    ENGINE_IRON = 0x02 /* Heavy worker  (C++23 / io_uring)  — durable tasks   */
 } vx_engine_type_t;
 
 /* ------------------------------------------------------------------------- */
@@ -71,14 +71,14 @@ typedef enum {
 /* ------------------------------------------------------------------------- */
 
 typedef struct __attribute__((packed)) {
-    uint32_t magic;                     /* VX_MAGIC_HEADER                   */
-    uint64_t task_id;                   /* monotonic task identifier         */
-    char tenant_id[VX_TENANT_ID_LEN];   /* NUL-padded tenant slug            */
-    uint8_t engine;                     /* vx_engine_type_t                  */
-    uint32_t memory_limit_mb;           /* cgroup memory.max (MiB)           */
-    uint32_t cpu_quota_us;              /* cgroup cpu.max quota (us/100ms)   */
-    uint64_t payload_len;               /* bytes in payload[]                */
-    uint8_t payload[];                  /* flexible array (JSON / Protobuf)  */
+    uint32_t magic;                   /* VX_MAGIC_HEADER                   */
+    uint64_t task_id;                 /* monotonic task identifier         */
+    char tenant_id[VX_TENANT_ID_LEN]; /* NUL-padded tenant slug            */
+    uint8_t engine;                   /* vx_engine_type_t                  */
+    uint32_t memory_limit_mb;         /* cgroup memory.max (MiB)           */
+    uint32_t cpu_quota_us;            /* cgroup cpu.max quota (us/100ms)   */
+    uint64_t payload_len;             /* bytes in payload[]                */
+    uint8_t payload[];                /* flexible array (JSON / Protobuf)  */
 } vx_task_header_t;
 
 /* ------------------------------------------------------------------------- */
@@ -90,18 +90,18 @@ typedef enum {
     VX_STATE_RUNNING = 0x01,
     VX_STATE_COMPLETED = 0x02,
     VX_STATE_FAILED = 0x03,
-    VX_STATE_KILLED_OOM = 0x04,   /* cgroup memory.max breach               */
+    VX_STATE_KILLED_OOM = 0x04, /* cgroup memory.max breach               */
     VX_STATE_KILLED_TIMEOUT = 0x05,
     VX_STATE_KILLED_SIGNAL = 0x06 /* SIGTERM / SIGKILL from supervisor      */
 } vx_task_state_t;
 
 typedef struct __attribute__((packed)) {
-    uint32_t magic;         /* VX_MAGIC_HEADER                              */
-    uint64_t task_id;       /* echoes vx_task_header_t.task_id              */
-    uint8_t state;          /* vx_task_state_t                              */
-    int32_t exit_code;      /* engine/process exit status                   */
-    uint64_t duration_us;   /* wall-clock execution time, microseconds      */
-    uint32_t payload_len;   /* bytes in payload[] (result body / error text)*/
+    uint32_t magic;       /* VX_MAGIC_HEADER                              */
+    uint64_t task_id;     /* echoes vx_task_header_t.task_id              */
+    uint8_t state;        /* vx_task_state_t                              */
+    int32_t exit_code;    /* engine/process exit status                   */
+    uint64_t duration_us; /* wall-clock execution time, microseconds      */
+    uint32_t payload_len; /* bytes in payload[] (result body / error text)*/
     uint8_t payload[];
 } vx_result_header_t;
 
@@ -115,15 +115,15 @@ typedef enum {
     VX_ERR_BAD_MAGIC = -2,
     VX_ERR_PAYLOAD_TOO_LARGE = -3,
     VX_ERR_NO_MEMORY = -4,
-    VX_ERR_SHM = -5,          /* shm_open / mmap / ftruncate failed         */
-    VX_ERR_RING_FULL = -6,    /* producer found no space                    */
-    VX_ERR_RING_EMPTY = -7,   /* consumer found no record                   */
-    VX_ERR_NAMESPACE = -8,    /* unshare()/clone() denied                   */
-    VX_ERR_CGROUP = -9,       /* cgroup v2 node create / write failed       */
-    VX_ERR_UIDMAP = -10,      /* uid_map / gid_map write denied             */
-    VX_ERR_SPAWN = -11,       /* fork / exec failed                         */
+    VX_ERR_SHM = -5,        /* shm_open / mmap / ftruncate failed         */
+    VX_ERR_RING_FULL = -6,  /* producer found no space                    */
+    VX_ERR_RING_EMPTY = -7, /* consumer found no record                   */
+    VX_ERR_NAMESPACE = -8,  /* unshare()/clone() denied                   */
+    VX_ERR_CGROUP = -9,     /* cgroup v2 node create / write failed       */
+    VX_ERR_UIDMAP = -10,    /* uid_map / gid_map write denied             */
+    VX_ERR_SPAWN = -11,     /* fork / exec failed                         */
     VX_ERR_TIMEOUT = -12,
-    VX_ERR_UNSUPPORTED = -13  /* kernel lacks a required facility           */
+    VX_ERR_UNSUPPORTED = -13 /* kernel lacks a required facility           */
 } vx_status_t;
 
 /* ------------------------------------------------------------------------- */

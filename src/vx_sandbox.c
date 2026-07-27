@@ -301,24 +301,36 @@ __attribute__((noreturn)) static void child_main(const vx_sandbox_spec_t *spec, 
 
     vx_signal_reset_for_child();
 
-    if (spec->envp != NULL) execvpe(spec->argv[0], spec->argv, (char *const *)spec->envp);
-    else execvp(spec->argv[0], spec->argv);
+    if (spec->envp != NULL)
+        execvpe(spec->argv[0], spec->argv, (char *const *)spec->envp);
+    else
+        execvp(spec->argv[0], spec->argv);
 
     child_fail(errfd, STAGE_EXEC, errno);
 }
 
 static const char *stage_name(int stage) {
     switch (stage) {
-    case STAGE_SYNC: return "sync barrier";
-    case STAGE_SETGID: return "setresgid";
-    case STAGE_SETUID: return "setresuid";
-    case STAGE_HOSTNAME: return "sethostname";
-    case STAGE_MOUNT_PRIVATE: return "mount / private";
-    case STAGE_MOUNT_PROC: return "mount /proc";
-    case STAGE_LOOPBACK: return "loopback up";
-    case STAGE_CHDIR: return "chdir";
-    case STAGE_EXEC: return "execvp";
-    default: return "unknown stage";
+    case STAGE_SYNC:
+        return "sync barrier";
+    case STAGE_SETGID:
+        return "setresgid";
+    case STAGE_SETUID:
+        return "setresuid";
+    case STAGE_HOSTNAME:
+        return "sethostname";
+    case STAGE_MOUNT_PRIVATE:
+        return "mount / private";
+    case STAGE_MOUNT_PROC:
+        return "mount /proc";
+    case STAGE_LOOPBACK:
+        return "loopback up";
+    case STAGE_CHDIR:
+        return "chdir";
+    case STAGE_EXEC:
+        return "execvp";
+    default:
+        return "unknown stage";
     }
 }
 
@@ -467,8 +479,7 @@ vx_status_t vx_sandbox_spawn(vx_sandbox_t *sb, const vx_sandbox_spec_t *spec) {
     close(errpipe[0]);
 
     if (rn == (ssize_t)sizeof(payload)) {
-        VX_ERROR("sandbox setup failed at %s: %s", stage_name(payload[0]),
-                 strerror(payload[1]));
+        VX_ERROR("sandbox setup failed at %s: %s", stage_name(payload[0]), strerror(payload[1]));
         int status = 0;
         while (waitpid(pid, &status, 0) < 0 && errno == EINTR) {}
         sb->reaped = true;

@@ -17,50 +17,52 @@ static int vxt_checks = 0;
 static int vxt_failures = 0;
 static const char *vxt_current = "";
 
-#define VXT_CASE(name)                                                                 \
-    do {                                                                               \
-        vxt_current = (name);                                                          \
-        printf("  - %s\n", (name));                                                    \
+#define VXT_CASE(name)                                                                             \
+    do {                                                                                           \
+        vxt_current = (name);                                                                      \
+        printf("  - %s\n", (name));                                                                \
     } while (0)
 
-#define VXT_CHECK(cond, ...)                                                           \
-    do {                                                                               \
-        vxt_checks++;                                                                  \
-        if (!(cond)) {                                                                 \
-            vxt_failures++;                                                            \
-            printf("    FAIL [%s:%d] in %s: ", __FILE__, __LINE__, vxt_current);        \
-            printf(__VA_ARGS__);                                                       \
-            printf("\n      expression: %s\n", #cond);                                 \
-        }                                                                              \
+#define VXT_CHECK(cond, ...)                                                                       \
+    do {                                                                                           \
+        vxt_checks++;                                                                              \
+        if (!(cond)) {                                                                             \
+            vxt_failures++;                                                                        \
+            printf("    FAIL [%s:%d] in %s: ", __FILE__, __LINE__, vxt_current);                   \
+            printf(__VA_ARGS__);                                                                   \
+            printf("\n      expression: %s\n", #cond);                                             \
+        }                                                                                          \
     } while (0)
 
-#define VXT_EQ_INT(got, want, label)                                                   \
-    do {                                                                               \
-        long long g_ = (long long)(got), w_ = (long long)(want);                        \
-        VXT_CHECK(g_ == w_, "%s: got %lld, want %lld", (label), g_, w_);                \
+#define VXT_EQ_INT(got, want, label)                                                               \
+    do {                                                                                           \
+        long long g_ = (long long)(got), w_ = (long long)(want);                                   \
+        VXT_CHECK(g_ == w_, "%s: got %lld, want %lld", (label), g_, w_);                           \
     } while (0)
 
-#define VXT_SKIP(...)                                                                  \
-    do {                                                                               \
-        printf("  SKIP: ");                                                            \
-        printf(__VA_ARGS__);                                                           \
-        printf("\n");                                                                  \
-        return VX_SKIP_EXIT;                                                           \
+#define VXT_SKIP(...)                                                                              \
+    do {                                                                                           \
+        printf("  SKIP: ");                                                                        \
+        printf(__VA_ARGS__);                                                                       \
+        printf("\n");                                                                              \
+        return VX_SKIP_EXIT;                                                                       \
     } while (0)
 
 #define VXT_BEGIN(suite) printf("== %s\n", (suite))
 
-#define VXT_END()                                                                      \
-    do {                                                                               \
-        if (vxt_failures == 0) {                                                       \
-            printf("  PASS (%d checks)\n", vxt_checks);                                \
-            return 0;                                                                  \
-        }                                                                              \
-        printf("  FAILED (%d/%d checks failed)\n", vxt_failures, vxt_checks);           \
-        return 1;                                                                      \
+#define VXT_END()                                                                                  \
+    do {                                                                                           \
+        if (vxt_failures == 0) {                                                                   \
+            printf("  PASS (%d checks)\n", vxt_checks);                                            \
+            return 0;                                                                              \
+        }                                                                                          \
+        printf("  FAILED (%d/%d checks failed)\n", vxt_failures, vxt_checks);                      \
+        return 1;                                                                                  \
     } while (0)
 
 /* Several suites need real kernel privilege; say so rather than pretending. */
-static inline int vxt_is_root(void) { return geteuid() == 0; }
+static inline int vxt_is_root(void) {
+    return geteuid() == 0;
+}
 
 #endif /* VXTEST_H */

@@ -28,7 +28,7 @@
 
 typedef struct {
     vx_ring_t *ring;
-    atomic_uint *seen;      /* one counter per record id — detects duplicates */
+    atomic_uint *seen; /* one counter per record id — detects duplicates */
     atomic_uint_least64_t *consumed;
     atomic_int *producer_done;
 } consumer_ctx_t;
@@ -52,8 +52,7 @@ static void *consumer_thread(void *arg) {
         if (st == VX_ERR_RING_EMPTY) {
             /* Only stop once the producer has finished *and* the ring has
              * drained; stopping on the first empty read would race. */
-            if (atomic_load(ctx->producer_done) &&
-                vx_ring_depth(ctx->ring) == 0) {
+            if (atomic_load(ctx->producer_done) && vx_ring_depth(ctx->ring) == 0) {
                 uint32_t l2 = 0;
                 if (vx_ring_pop(ctx->ring, buf, sizeof(buf), &l2) == VX_ERR_RING_EMPTY) break;
             }
@@ -120,8 +119,10 @@ static int run_concurrency_case(void) {
     uint32_t missing = 0, duplicated = 0;
     for (uint32_t i = 0; i < CONC_ITEMS; i++) {
         unsigned c = atomic_load(&seen[i]);
-        if (c == 0) missing++;
-        else if (c > 1) duplicated++;
+        if (c == 0)
+            missing++;
+        else if (c > 1)
+            duplicated++;
     }
     if (missing != 0) {
         printf("    FAIL: %u records were never delivered\n", missing);

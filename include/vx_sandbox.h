@@ -39,21 +39,21 @@ extern "C" {
  * a hardened host, an unprivileged container, or a WSL kernel can each be
  * missing any one of these. */
 typedef struct {
-    bool userns;          /* CLONE_NEWUSER permitted                       */
-    bool pidns;           /* CLONE_NEWPID permitted                        */
-    bool netns;           /* CLONE_NEWNET permitted                        */
-    bool ipcns;           /* CLONE_NEWIPC permitted                        */
-    bool mountns;         /* CLONE_NEWNS permitted                         */
-    bool utsns;           /* CLONE_NEWUTS permitted                        */
-    bool cgroupns;        /* CLONE_NEWCGROUP permitted                     */
-    bool cgroup_v2;       /* /sys/fs/cgroup is cgroup2                     */
-    bool cgroup_memory;   /* memory controller delegable                   */
-    bool cgroup_cpu;      /* cpu controller delegable                      */
-    bool cgroup_pids;     /* pids controller delegable                     */
-    bool cgroup_kill;     /* cgroup.kill available (kernel >= 5.14)        */
-    bool pidfd;           /* pidfd_open(2) available (kernel >= 5.3)       */
-    bool signalfd;        /* signalfd(2) available                         */
-    long max_user_ns;     /* /proc/sys/user/max_user_namespaces            */
+    bool userns;        /* CLONE_NEWUSER permitted                       */
+    bool pidns;         /* CLONE_NEWPID permitted                        */
+    bool netns;         /* CLONE_NEWNET permitted                        */
+    bool ipcns;         /* CLONE_NEWIPC permitted                        */
+    bool mountns;       /* CLONE_NEWNS permitted                         */
+    bool utsns;         /* CLONE_NEWUTS permitted                        */
+    bool cgroupns;      /* CLONE_NEWCGROUP permitted                     */
+    bool cgroup_v2;     /* /sys/fs/cgroup is cgroup2                     */
+    bool cgroup_memory; /* memory controller delegable                   */
+    bool cgroup_cpu;    /* cpu controller delegable                      */
+    bool cgroup_pids;   /* pids controller delegable                     */
+    bool cgroup_kill;   /* cgroup.kill available (kernel >= 5.14)        */
+    bool pidfd;         /* pidfd_open(2) available (kernel >= 5.3)       */
+    bool signalfd;      /* signalfd(2) available                         */
+    long max_user_ns;   /* /proc/sys/user/max_user_namespaces            */
 } vx_sandbox_caps_t;
 
 typedef struct {
@@ -107,17 +107,17 @@ typedef struct {
 } vx_sandbox_spec_t;
 
 typedef struct {
-    pid_t pid;         /* host-side pid of the guest (PID 1 inside)        */
-    int pidfd;         /* pidfd for race-free wait/kill; -1 if unavailable */
-    vx_cgroup_t cg;    /* the task's cgroup node                          */
+    pid_t pid;      /* host-side pid of the guest (PID 1 inside)        */
+    int pidfd;      /* pidfd for race-free wait/kill; -1 if unavailable */
+    vx_cgroup_t cg; /* the task's cgroup node                          */
     uint64_t started_us;
     bool reaped;
 } vx_sandbox_t;
 
 typedef struct {
     vx_task_state_t state;
-    int exit_code;      /* exit status, or 128+signo when signalled        */
-    int term_signal;    /* 0 if the guest exited normally                  */
+    int exit_code;   /* exit status, or 128+signo when signalled        */
+    int term_signal; /* 0 if the guest exited normally                  */
     uint64_t duration_us;
     vx_cgroup_stats_t usage;
 } vx_sandbox_result_t;

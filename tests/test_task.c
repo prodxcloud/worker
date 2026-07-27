@@ -14,8 +14,8 @@ int main(void) {
     const vx_task_header_t *hdr = NULL;
 
     VXT_CASE("roundtrip preserves every field");
-    long n = vx_task_encode(buf, sizeof(buf), 0xDEADBEEFull, "acme-prod", ENGINE_IRON, 256,
-                            75000, "hello world", 11);
+    long n = vx_task_encode(buf, sizeof(buf), 0xDEADBEEFull, "acme-prod", ENGINE_IRON, 256, 75000,
+                            "hello world", 11);
     VXT_EQ_INT(n, VX_TASK_HEADER_SIZE + 11, "encoded length");
     VXT_EQ_INT(vx_task_decode(buf, (size_t)n, &hdr), VX_OK, "decode status");
     if (hdr != NULL) {
@@ -90,8 +90,7 @@ int main(void) {
     VXT_CASE("result frames roundtrip");
     unsigned char rbuf[VX_RESULT_HEADER_SIZE + 32];
     const vx_result_header_t *res = NULL;
-    long rn = vx_result_encode(rbuf, sizeof(rbuf), 99, VX_STATE_KILLED_OOM, 137, 1234567,
-                               "oom", 3);
+    long rn = vx_result_encode(rbuf, sizeof(rbuf), 99, VX_STATE_KILLED_OOM, 137, 1234567, "oom", 3);
     VXT_EQ_INT(rn, VX_RESULT_HEADER_SIZE + 3, "encoded result length");
     VXT_EQ_INT(vx_result_decode(rbuf, (size_t)rn, &res), VX_OK, "decode result");
     if (res != NULL) {

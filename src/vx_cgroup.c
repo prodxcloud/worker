@@ -81,7 +81,7 @@ static vx_status_t cg_read_u64(const char *dir, const char *file, uint64_t *out)
  * Matches the whole first token, so looking up "oom" never picks up
  * "oom_kill". */
 static vx_status_t cg_read_keyed(const char *dir, const char *file, const char *key,
-                                uint64_t *out) {
+                                 uint64_t *out) {
     char buf[2048];
     vx_status_t st = cg_read(dir, file, buf, sizeof(buf));
     if (st != VX_OK) return st;
@@ -155,8 +155,7 @@ vx_status_t vx_cgroup_create(vx_cgroup_t *cg, uint64_t task_id, const char *root
         static const char *ctrls[] = {"memory", "cpu", "pids"};
         for (size_t i = 0; i < sizeof(ctrls) / sizeof(ctrls[0]); i++) {
             if (strstr(have, ctrls[i]) == NULL) continue;
-            int n = snprintf(want + used, sizeof(want) - used, "%s+%s", used ? " " : "",
-                             ctrls[i]);
+            int n = snprintf(want + used, sizeof(want) - used, "%s+%s", used ? " " : "", ctrls[i]);
             if (n > 0) used += (size_t)n;
         }
         if (used > 0) (void)cg_write(root, "cgroup.subtree_control", want);
@@ -223,8 +222,10 @@ vx_status_t vx_cgroup_set_memory(vx_cgroup_t *cg, uint32_t mb) {
 vx_status_t vx_cgroup_set_memory_high(vx_cgroup_t *cg, uint32_t mb) {
     if (cg == NULL || !cg->created) return VX_ERR_INVALID_ARG;
     char value[32];
-    if (mb == 0) snprintf(value, sizeof(value), "max");
-    else snprintf(value, sizeof(value), "%" PRIu64, (uint64_t)((uint64_t)mb * 1024ull * 1024ull));
+    if (mb == 0)
+        snprintf(value, sizeof(value), "max");
+    else
+        snprintf(value, sizeof(value), "%" PRIu64, (uint64_t)((uint64_t)mb * 1024ull * 1024ull));
     return cg_write(cg->path, "memory.high", value);
 }
 
@@ -233,16 +234,20 @@ vx_status_t vx_cgroup_set_cpu(vx_cgroup_t *cg, uint32_t quota_us, uint32_t perio
     if (period_us == 0) period_us = VX_CPU_PERIOD_DEFAULT_US;
 
     char value[64];
-    if (quota_us == 0) snprintf(value, sizeof(value), "max %u", period_us);
-    else snprintf(value, sizeof(value), "%u %u", quota_us, period_us);
+    if (quota_us == 0)
+        snprintf(value, sizeof(value), "max %u", period_us);
+    else
+        snprintf(value, sizeof(value), "%u %u", quota_us, period_us);
     return cg_write(cg->path, "cpu.max", value);
 }
 
 vx_status_t vx_cgroup_set_pids_max(vx_cgroup_t *cg, uint32_t max) {
     if (cg == NULL || !cg->created) return VX_ERR_INVALID_ARG;
     char value[32];
-    if (max == 0) snprintf(value, sizeof(value), "max");
-    else snprintf(value, sizeof(value), "%u", max);
+    if (max == 0)
+        snprintf(value, sizeof(value), "max");
+    else
+        snprintf(value, sizeof(value), "%u", max);
     return cg_write(cg->path, "pids.max", value);
 }
 

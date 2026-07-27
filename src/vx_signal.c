@@ -30,8 +30,10 @@ static void build_set(sigset_t *set) {
 
 /* Fallback path only.  Touches nothing but two sig_atomic_t flags. */
 static void fallback_handler(int signo) {
-    if (signo == SIGCHLD) g_child = 1;
-    else g_shutdown = 1;
+    if (signo == SIGCHLD)
+        g_child = 1;
+    else
+        g_shutdown = 1;
 }
 
 vx_status_t vx_signal_install(void) {
@@ -73,7 +75,9 @@ vx_status_t vx_signal_install(void) {
     return VX_OK;
 }
 
-int vx_signal_fd(void) { return g_sigfd; }
+int vx_signal_fd(void) {
+    return g_sigfd;
+}
 
 int vx_signal_drain(bool *shutdown, bool *child_exited) {
     bool sd = false, ce = false;
@@ -90,8 +94,10 @@ int vx_signal_drain(bool *shutdown, bool *child_exited) {
             }
             if (n != (ssize_t)sizeof(si)) break;
             count++;
-            if (si.ssi_signo == SIGCHLD) ce = true;
-            else sd = true;
+            if (si.ssi_signo == SIGCHLD)
+                ce = true;
+            else
+                sd = true;
             VX_TRACE("signal %u from pid %u", si.ssi_signo, si.ssi_pid);
         }
     } else {
@@ -113,7 +119,9 @@ int vx_signal_drain(bool *shutdown, bool *child_exited) {
     return count;
 }
 
-bool vx_signal_shutdown_requested(void) { return g_shutdown != 0; }
+bool vx_signal_shutdown_requested(void) {
+    return g_shutdown != 0;
+}
 
 int vx_signal_wait(int timeout_ms) {
     if (g_sigfd < 0) {

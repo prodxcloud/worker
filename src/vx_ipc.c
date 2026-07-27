@@ -82,7 +82,9 @@ struct vx_ring {
 /* Helpers                                                                   */
 /* ------------------------------------------------------------------------- */
 
-static uint64_t align_up(uint64_t v, uint64_t a) { return (v + a - 1) & ~(a - 1); }
+static uint64_t align_up(uint64_t v, uint64_t a) {
+    return (v + a - 1) & ~(a - 1);
+}
 
 static uint32_t next_pow2(uint32_t v) {
     if (v == 0) return 1;
@@ -246,8 +248,7 @@ vx_status_t vx_ring_open(vx_ring_t **out, const char *name, bool read_only) {
         close(fd);
         return VX_ERR_BAD_MAGIC;
     }
-    if (hdr.slot_count == 0 || (hdr.slot_count & (hdr.slot_count - 1)) != 0 ||
-        hdr.map_bytes == 0) {
+    if (hdr.slot_count == 0 || (hdr.slot_count & (hdr.slot_count - 1)) != 0 || hdr.map_bytes == 0) {
         close(fd);
         return VX_ERR_SHM;
     }
@@ -360,9 +361,8 @@ vx_status_t vx_ring_pop(vx_ring_t *r, void *buf, uint32_t cap, uint32_t *out_len
             uint32_t len = (uint32_t)atomic_load_explicit(&slot->len, memory_order_relaxed);
             if (len > cap) return VX_ERR_INVALID_ARG;
 
-            if (!atomic_compare_exchange_weak_explicit(&sh->read_pos, &pos, pos + 1,
-                                                       memory_order_acq_rel,
-                                                       memory_order_relaxed)) {
+            if (!atomic_compare_exchange_weak_explicit(
+                    &sh->read_pos, &pos, pos + 1, memory_order_acq_rel, memory_order_relaxed)) {
                 continue; /* another consumer claimed it; re-read the cursor */
             }
 
@@ -393,8 +393,7 @@ vx_status_t vx_ring_pop(vx_ring_t *r, void *buf, uint32_t cap, uint32_t *out_len
     }
 }
 
-vx_status_t vx_ring_pop_task(vx_ring_t *r, void *buf, uint32_t cap,
-                            const vx_task_header_t **out) {
+vx_status_t vx_ring_pop_task(vx_ring_t *r, void *buf, uint32_t cap, const vx_task_header_t **out) {
     if (out == NULL) return VX_ERR_INVALID_ARG;
     *out = NULL;
     uint32_t len = 0;

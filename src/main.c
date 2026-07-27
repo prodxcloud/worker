@@ -21,45 +21,44 @@
 #define VXWORKER_VERSION "1.0.0"
 
 static void usage(void) {
-    fputs(
-        "vxworker " VXWORKER_VERSION " — VxCloud C11 system ABI and isolation layer\n"
-        "\n"
-        "usage: vxworker <command> [options]\n"
-        "\n"
-        "commands:\n"
-        "  abi                        print the frozen ABI v1 layout\n"
-        "  probe                      report kernel isolation capabilities\n"
-        "  run [opts] -- <argv...>    execute a command inside a sandbox\n"
-        "  encode-task [opts]         write an ABI task frame to stdout\n"
-        "  decode-task [file]         validate and describe an ABI task frame\n"
-        "  ring <sub> [opts]          shared-memory ring: create|push|pop|info|unlink\n"
-        "  selftest                   run built-in consistency checks\n"
-        "  version                    print the version\n"
-        "\n"
-        "run options:\n"
-        "  --task-id N        task identifier (default 1)\n"
-        "  --tenant S         tenant slug (default \"default\")\n"
-        "  --mem MB           memory.max in MiB, 0 = unlimited (default 64)\n"
-        "  --cpu US           cpu.max quota in microseconds (default 50000)\n"
-        "  --pids N           pids.max (default 64)\n"
-        "  --timeout MS       wall-clock kill deadline (default 30000)\n"
-        "  --host-uid N       host uid that namespace uid 0 maps to (default 65534)\n"
-        "  --no-net           share the host network namespace\n"
-        "  --no-userns        do not create a user namespace\n"
-        "  --no-pidns         do not create a pid namespace\n"
-        "  --no-proc          do not mount a fresh /proc\n"
-        "  --hostname S       hostname inside the UTS namespace\n"
-        "\n"
-        "encode-task options:\n"
-        "  --task-id N  --tenant S  --engine ion|iron  --mem MB  --cpu US\n"
-        "  --payload S        inline payload bytes\n"
-        "\n"
-        "ring options:\n"
-        "  --name S  --slots N  --slot-bytes N  --payload S\n"
-        "\n"
-        "environment:\n"
-        "  VX_LOG=silent|error|warn|info|debug|trace\n",
-        stderr);
+    fputs("vxworker " VXWORKER_VERSION " — VxCloud C11 system ABI and isolation layer\n"
+          "\n"
+          "usage: vxworker <command> [options]\n"
+          "\n"
+          "commands:\n"
+          "  abi                        print the frozen ABI v1 layout\n"
+          "  probe                      report kernel isolation capabilities\n"
+          "  run [opts] -- <argv...>    execute a command inside a sandbox\n"
+          "  encode-task [opts]         write an ABI task frame to stdout\n"
+          "  decode-task [file]         validate and describe an ABI task frame\n"
+          "  ring <sub> [opts]          shared-memory ring: create|push|pop|info|unlink\n"
+          "  selftest                   run built-in consistency checks\n"
+          "  version                    print the version\n"
+          "\n"
+          "run options:\n"
+          "  --task-id N        task identifier (default 1)\n"
+          "  --tenant S         tenant slug (default \"default\")\n"
+          "  --mem MB           memory.max in MiB, 0 = unlimited (default 64)\n"
+          "  --cpu US           cpu.max quota in microseconds (default 50000)\n"
+          "  --pids N           pids.max (default 64)\n"
+          "  --timeout MS       wall-clock kill deadline (default 30000)\n"
+          "  --host-uid N       host uid that namespace uid 0 maps to (default 65534)\n"
+          "  --no-net           share the host network namespace\n"
+          "  --no-userns        do not create a user namespace\n"
+          "  --no-pidns         do not create a pid namespace\n"
+          "  --no-proc          do not mount a fresh /proc\n"
+          "  --hostname S       hostname inside the UTS namespace\n"
+          "\n"
+          "encode-task options:\n"
+          "  --task-id N  --tenant S  --engine ion|iron  --mem MB  --cpu US\n"
+          "  --payload S        inline payload bytes\n"
+          "\n"
+          "ring options:\n"
+          "  --name S  --slots N  --slot-bytes N  --payload S\n"
+          "\n"
+          "environment:\n"
+          "  VX_LOG=silent|error|warn|info|debug|trace\n",
+          stderr);
 }
 
 /* ------------------------------------------------------------------------- */
@@ -85,7 +84,9 @@ static int cmd_abi(void) {
     return 0;
 }
 
-static const char *yn(bool v) { return v ? "yes" : "no"; }
+static const char *yn(bool v) {
+    return v ? "yes" : "no";
+}
 
 static int cmd_probe(void) {
     vx_sandbox_caps_t caps;
@@ -121,8 +122,8 @@ static int cmd_probe(void) {
     printf("  euid             %lld\n", (long long)geteuid());
 
     bool ready = caps.userns && caps.pidns && caps.cgroup_v2 && caps.cgroup_memory;
-    printf("\nverdict: %s\n", ready ? "full isolation available"
-                                    : "DEGRADED — some isolation unavailable");
+    printf("\nverdict: %s\n",
+           ready ? "full isolation available" : "DEGRADED — some isolation unavailable");
     return ready ? 0 : 2;
 }
 
@@ -149,31 +150,44 @@ typedef struct {
 } opts_t;
 
 enum {
-    OPT_TASK_ID = 1000, OPT_TENANT, OPT_ENGINE, OPT_MEM, OPT_CPU, OPT_PIDS, OPT_TIMEOUT,
-    OPT_HOST_UID, OPT_NO_NET, OPT_NO_USERNS, OPT_NO_PIDNS, OPT_NO_PROC, OPT_HOSTNAME,
-    OPT_PAYLOAD, OPT_NAME, OPT_SLOTS, OPT_SLOT_BYTES
+    OPT_TASK_ID = 1000,
+    OPT_TENANT,
+    OPT_ENGINE,
+    OPT_MEM,
+    OPT_CPU,
+    OPT_PIDS,
+    OPT_TIMEOUT,
+    OPT_HOST_UID,
+    OPT_NO_NET,
+    OPT_NO_USERNS,
+    OPT_NO_PIDNS,
+    OPT_NO_PROC,
+    OPT_HOSTNAME,
+    OPT_PAYLOAD,
+    OPT_NAME,
+    OPT_SLOTS,
+    OPT_SLOT_BYTES
 };
 
-static const struct option long_opts[] = {
-    {"task-id", required_argument, NULL, OPT_TASK_ID},
-    {"tenant", required_argument, NULL, OPT_TENANT},
-    {"engine", required_argument, NULL, OPT_ENGINE},
-    {"mem", required_argument, NULL, OPT_MEM},
-    {"cpu", required_argument, NULL, OPT_CPU},
-    {"pids", required_argument, NULL, OPT_PIDS},
-    {"timeout", required_argument, NULL, OPT_TIMEOUT},
-    {"host-uid", required_argument, NULL, OPT_HOST_UID},
-    {"no-net", no_argument, NULL, OPT_NO_NET},
-    {"no-userns", no_argument, NULL, OPT_NO_USERNS},
-    {"no-pidns", no_argument, NULL, OPT_NO_PIDNS},
-    {"no-proc", no_argument, NULL, OPT_NO_PROC},
-    {"hostname", required_argument, NULL, OPT_HOSTNAME},
-    {"payload", required_argument, NULL, OPT_PAYLOAD},
-    {"name", required_argument, NULL, OPT_NAME},
-    {"slots", required_argument, NULL, OPT_SLOTS},
-    {"slot-bytes", required_argument, NULL, OPT_SLOT_BYTES},
-    {"help", no_argument, NULL, 'h'},
-    {NULL, 0, NULL, 0}};
+static const struct option long_opts[] = {{"task-id", required_argument, NULL, OPT_TASK_ID},
+                                          {"tenant", required_argument, NULL, OPT_TENANT},
+                                          {"engine", required_argument, NULL, OPT_ENGINE},
+                                          {"mem", required_argument, NULL, OPT_MEM},
+                                          {"cpu", required_argument, NULL, OPT_CPU},
+                                          {"pids", required_argument, NULL, OPT_PIDS},
+                                          {"timeout", required_argument, NULL, OPT_TIMEOUT},
+                                          {"host-uid", required_argument, NULL, OPT_HOST_UID},
+                                          {"no-net", no_argument, NULL, OPT_NO_NET},
+                                          {"no-userns", no_argument, NULL, OPT_NO_USERNS},
+                                          {"no-pidns", no_argument, NULL, OPT_NO_PIDNS},
+                                          {"no-proc", no_argument, NULL, OPT_NO_PROC},
+                                          {"hostname", required_argument, NULL, OPT_HOSTNAME},
+                                          {"payload", required_argument, NULL, OPT_PAYLOAD},
+                                          {"name", required_argument, NULL, OPT_NAME},
+                                          {"slots", required_argument, NULL, OPT_SLOTS},
+                                          {"slot-bytes", required_argument, NULL, OPT_SLOT_BYTES},
+                                          {"help", no_argument, NULL, 'h'},
+                                          {NULL, 0, NULL, 0}};
 
 static void opts_init(opts_t *o) {
     memset(o, 0, sizeof(*o));
@@ -195,25 +209,63 @@ static int parse_opts(int argc, char **argv, opts_t *o) {
         int c = getopt_long(argc, argv, "h", long_opts, NULL);
         if (c == -1) break;
         switch (c) {
-        case OPT_TASK_ID: o->task_id = strtoull(optarg, NULL, 10); break;
-        case OPT_TENANT: o->tenant = optarg; break;
-        case OPT_ENGINE: o->engine = optarg; break;
-        case OPT_MEM: o->mem = (uint32_t)strtoul(optarg, NULL, 10); break;
-        case OPT_CPU: o->cpu = (uint32_t)strtoul(optarg, NULL, 10); break;
-        case OPT_PIDS: o->pids = (uint32_t)strtoul(optarg, NULL, 10); break;
-        case OPT_TIMEOUT: o->timeout = (uint32_t)strtoul(optarg, NULL, 10); break;
-        case OPT_HOST_UID: o->host_uid = strtol(optarg, NULL, 10); break;
-        case OPT_NO_NET: o->no_net = true; break;
-        case OPT_NO_USERNS: o->no_userns = true; break;
-        case OPT_NO_PIDNS: o->no_pidns = true; break;
-        case OPT_NO_PROC: o->no_proc = true; break;
-        case OPT_HOSTNAME: o->hostname = optarg; break;
-        case OPT_PAYLOAD: o->payload = optarg; break;
-        case OPT_NAME: o->name = optarg; break;
-        case OPT_SLOTS: o->slots = (uint32_t)strtoul(optarg, NULL, 10); break;
-        case OPT_SLOT_BYTES: o->slot_bytes = (uint32_t)strtoul(optarg, NULL, 10); break;
-        case 'h': usage(); return -1;
-        default: usage(); return -1;
+        case OPT_TASK_ID:
+            o->task_id = strtoull(optarg, NULL, 10);
+            break;
+        case OPT_TENANT:
+            o->tenant = optarg;
+            break;
+        case OPT_ENGINE:
+            o->engine = optarg;
+            break;
+        case OPT_MEM:
+            o->mem = (uint32_t)strtoul(optarg, NULL, 10);
+            break;
+        case OPT_CPU:
+            o->cpu = (uint32_t)strtoul(optarg, NULL, 10);
+            break;
+        case OPT_PIDS:
+            o->pids = (uint32_t)strtoul(optarg, NULL, 10);
+            break;
+        case OPT_TIMEOUT:
+            o->timeout = (uint32_t)strtoul(optarg, NULL, 10);
+            break;
+        case OPT_HOST_UID:
+            o->host_uid = strtol(optarg, NULL, 10);
+            break;
+        case OPT_NO_NET:
+            o->no_net = true;
+            break;
+        case OPT_NO_USERNS:
+            o->no_userns = true;
+            break;
+        case OPT_NO_PIDNS:
+            o->no_pidns = true;
+            break;
+        case OPT_NO_PROC:
+            o->no_proc = true;
+            break;
+        case OPT_HOSTNAME:
+            o->hostname = optarg;
+            break;
+        case OPT_PAYLOAD:
+            o->payload = optarg;
+            break;
+        case OPT_NAME:
+            o->name = optarg;
+            break;
+        case OPT_SLOTS:
+            o->slots = (uint32_t)strtoul(optarg, NULL, 10);
+            break;
+        case OPT_SLOT_BYTES:
+            o->slot_bytes = (uint32_t)strtoul(optarg, NULL, 10);
+            break;
+        case 'h':
+            usage();
+            return -1;
+        default:
+            usage();
+            return -1;
         }
     }
     return optind;
@@ -268,7 +320,8 @@ static int cmd_run(int argc, char **argv) {
         return 1;
     }
 
-    fprintf(stderr, "state=%s exit=%d signal=%d duration_us=%llu mem_peak=%llu cpu_us=%llu oom=%llu\n",
+    fprintf(stderr,
+            "state=%s exit=%d signal=%d duration_us=%llu mem_peak=%llu cpu_us=%llu oom=%llu\n",
             vx_state_str(res.state), res.exit_code, res.term_signal,
             (unsigned long long)res.duration_us, (unsigned long long)res.usage.memory_peak,
             (unsigned long long)res.usage.cpu_usage_us, (unsigned long long)res.usage.oom_kill);
@@ -284,7 +337,8 @@ static int cmd_encode_task(int argc, char **argv) {
     if (parse_opts(argc, argv, &o) < 0) return 2;
 
     vx_engine_type_t engine = ENGINE_ION;
-    if (strcmp(o.engine, "iron") == 0) engine = ENGINE_IRON;
+    if (strcmp(o.engine, "iron") == 0)
+        engine = ENGINE_IRON;
     else if (strcmp(o.engine, "ion") != 0) {
         fprintf(stderr, "unknown engine \"%s\" (want ion|iron)\n", o.engine);
         return 2;
@@ -391,8 +445,10 @@ static int cmd_ring(int argc, char **argv) {
         unsigned char buf[VX_RING_SLOT_BYTES_DEFAULT];
         uint32_t len = 0;
         st = vx_ring_pop(r, buf, sizeof(buf), &len);
-        if (st == VX_OK) printf("pop %u bytes: %.*s\n", len, (int)len, (const char *)buf);
-        else printf("pop: %s\n", vx_status_name(st));
+        if (st == VX_OK)
+            printf("pop %u bytes: %.*s\n", len, (int)len, (const char *)buf);
+        else
+            printf("pop: %s\n", vx_status_name(st));
         rc = st == VX_OK ? 0 : 1;
     } else if (strcmp(sub, "info") == 0) {
         vx_ring_stats_t s;
