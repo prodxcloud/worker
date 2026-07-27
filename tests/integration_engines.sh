@@ -40,11 +40,16 @@ $VX abi || fails=$((fails + 1))
 
 # --------------------------------------------------------------------------
 banner "worker -> frame on disk"
-PAYLOAD='{"url":"https://example.com","selector":"h1"}'
+# Each engine defines its own payload schema on top of the shared header; the
+# header is the contract, the body is the engine's business.  ion takes JSON
+# tagged by "op", iron takes op=/arg= lines.  Both ops chosen here are offline so
+# the check never depends on the network.
+PAYLOAD='{"op":"noop"}'
 $VX encode-task --task-id 4242 --tenant acme-prod --engine ion \
     --mem 8 --cpu 50000 --payload "$PAYLOAD" > "$TMP/ion_task.bin" || fails=$((fails + 1))
+IRON_PAYLOAD=$(printf 'op=exec\narg=/bin/echo\narg=from-iron\n')
 $VX encode-task --task-id 9001 --tenant acme-prod --engine iron \
-    --mem 512 --cpu 200000 --payload '{"argv":["/bin/echo","from-iron"]}' \
+    --mem 512 --cpu 200000 --payload "$IRON_PAYLOAD" \
     > "$TMP/iron_task.bin" || fails=$((fails + 1))
 
 ion_size=$(wc -c < "$TMP/ion_task.bin")
@@ -69,7 +74,21 @@ $VX decode-task "$TMP/ion_task.bin" || fails=$((fails + 1))
 # --------------------------------------------------------------------------
 banner "ion (Rust) decodes the same bytes"
 if [ -x "$ION" ]; then
-  "$ION" run "$TMP/ion_task.bin" || { echo "FAIL: ion could not run the frame"; fails=$((fails + 1)); }
+  # ion reads a *stream* of frames, so the source is --input (or stdin), not a
+  # positional path.  --output matters as much: result frames go to stdout by
+  # default, and letting raw binary into this script's stdout makes the whole
+  # transcript a binary file.
+  if "$ION" run --input "$TMP/ion_task.bin" --output "$TMP/ion_result.bin"; then
+    if [ "$(od -A n -t x1 -N 4 "$TMP/ion_result.bin" | tr -d ' ')" = "01565758" ]; then
+      echo "ok  : ion emitted a well-formed result frame ($(wc -c < "$TMP/ion_result.bin") bytes)"
+    else
+      echo "FAIL: ion's result frame has the wrong magic"
+      fails=$((fails + 1))
+    fi
+  else
+    echo "FAIL: ion could not run the frame"
+    fails=$((fails + 1))
+  fi
 else
   echo "SKIP: no ion binary at $ION (build it with: cd ../ion && cargo build --release)"
   skips=$((skips + 1))
@@ -98,7 +117,7 @@ else
 fi
 
 if [ -x "$ION" ]; then
-  if "$ION" run "$TMP/corrupt.bin" >/dev/null 2>&1; then
+  if "$ION" run --input "$TMP/corrupt.bin" --output /dev/null >/dev/null 2>&1; then
     echo "FAIL: ion accepted a bad magic"
     fails=$((fails + 1))
   else
@@ -124,9 +143,13 @@ if $VX decode-task "$TMP/short.bin" >/dev/null 2>&1; then
 else
   echo "ok  : worker rejected the truncated frame"
 fi
-if [ -x "$ION" ] && "$ION" run "$TMP/short.bin" >/dev/null 2>&1; then
-  echo "FAIL: ion accepted a truncated frame"
-  fails=$((fails + 1))
+if [ -x "$ION" ]; then
+  if "$ION" run --input "$TMP/short.bin" --output /dev/null >/dev/null 2>&1; then
+    echo "FAIL: ion accepted a truncated frame"
+    fails=$((fails + 1))
+  else
+    echo "ok  : ion rejected the truncated frame"
+  fi
 fi
 if [ -x "$IRON" ] && "$IRON" run "$TMP/short.bin" >/dev/null 2>&1; then
   echo "FAIL: iron accepted a truncated frame"
