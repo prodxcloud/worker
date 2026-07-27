@@ -29,6 +29,7 @@
 #include <sys/types.h>
 
 #include "vx_cgroup.h"
+#include "vx_seccomp.h"
 #include "worker_abi.h"
 
 #ifdef __cplusplus
@@ -53,6 +54,8 @@ typedef struct {
     bool cgroup_kill;   /* cgroup.kill available (kernel >= 5.14)        */
     bool pidfd;         /* pidfd_open(2) available (kernel >= 5.3)       */
     bool signalfd;      /* signalfd(2) available                         */
+    bool seccomp;       /* seccomp-bpf filters can be installed          */
+    bool seccomp_kill;  /* SECCOMP_RET_KILL_PROCESS, not just the thread */
     long max_user_ns;   /* /proc/sys/user/max_user_namespaces            */
 } vx_sandbox_caps_t;
 
@@ -91,6 +94,11 @@ typedef struct {
     /* With new_net: bring the namespace's loopback up via SIOCSIFFLAGS, so
      * localhost-bound servers inside the sandbox work. */
     bool loopback_up;
+
+    /* Syscall filter, installed in the child between the mount/hostname setup
+     * and execvp() — that setup needs the very calls the guest must not have.
+     * Defaults to VX_SECCOMP_ERRNO; set mode to VX_SECCOMP_OFF to disable. */
+    vx_seccomp_policy_t seccomp;
 
     /* Optional hostname inside a new UTS namespace. */
     const char *hostname;

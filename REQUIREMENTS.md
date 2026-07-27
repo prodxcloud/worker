@@ -148,11 +148,51 @@ spec's intent for elastic workloads that would rather run slowly than die.
 
 ---
 
-## Not implemented
+## Beyond the Phase 1 spec: syscall filtering
 
-- **`seccomp-bpf` syscall filtering.** Namespaces and cgroups bound what a task can
-  reach and consume, not which syscalls it may issue. Not in the Phase 1 spec;
-  it is the natural next layer.
+Implemented after the fact, because namespaces and cgroups bound what a task can
+reach and consume but say nothing about which syscalls it may issue.
+
+- [x] Hand-assembled seccomp-bpf program, no libseccomp
+- [x] Architecture pinned and the x32 syscall bit rejected — without both, the
+      number-only filter is bypassable through the x32/i386 entry points
+- [x] Four modes: `off`, `audit` (`SECCOMP_RET_LOG`), `errno` (`EPERM`, the
+      default), `kill` (`SECCOMP_RET_KILL_PROCESS`)
+- [x] 51 syscalls denied by default across ten rationale groups (kernel modules,
+      host state, mount reconfiguration, namespace joining, host identity, IO
+      ports, kernel introspection, keyring, misc)
+- [x] `PR_SET_NO_NEW_PRIVS` always set — required for an unprivileged filter, and
+      independently closes the setuid-through-exec escalation
+- [x] Installed between the supervisor's mount/hostname setup and `execvp()`,
+      because that setup needs the very calls the guest must not have
+- [x] Inherited through exec and unliftable, verified via `/proc/<pid>/status`
+      (`Seccomp: 2`, `Seccomp_filters: 2`)
+- [x] Per-policy opt-outs: `--deny-ptrace`, `--allow-nsops`
+- [x] Capability probing that installs a filter in a throwaway child, since a
+      successful install is irreversible and cannot be tested in-process
+- [x] Graceful degradation to the `prctl` interface on kernels without
+      `seccomp(2)`; audit mode correctly reported unavailable there rather than
+      silently downgraded
+
+Tests: `test_seccomp.c`, 42 assertions. Behavioural throughout — each case forks
+a child, installs the filter, and *issues the syscall*, because an instruction-count
+assertion would pass just as happily with the jump offsets wrong.
+
+Measured: `mount`, `keyctl` and `unshare` refused with `EPERM` in errno mode;
+`SIGSYS` (signal 31, exit 159) in kill mode; a gcc compile-and-run untouched
+inside the sandbox; and the filter visible in the guest's `/proc` after exec.
+
+**Not filtered: syscall arguments.** Only syscall numbers are compared. Docker
+allows `personality(0)` while refusing `personality(PER_LINUX32)`; matching that
+needs BPF comparisons against `seccomp_data.args[]`. `personality` is denied
+outright here instead.
+
+**Deliberately allowed:** `io_uring_setup`, because `iron` is built on io_uring
+and denying it would deny the product — a stated residual risk. And `ptrace`, for
+the reason in the README's finding 3: it breaks LeakSanitizer, gdb and perf, while
+inside the namespaces it can only reach the tenant's own processes.
+
+## Not implemented
 - **rootfs pivot / `pivot_root`.** The guest shares the host filesystem view apart
   from a private `/proc`. `spec.rootfs` is reserved but unimplemented.
 - **cgroup v1.** Will not be added; split hierarchies cannot express an atomic
@@ -167,8 +207,8 @@ spec's intent for elastic workloads that would rather run slowly than die.
 | gate | result |
 |---|---|
 | `make` (`-Werror`, 12 extra warning classes) | clean |
-| `make test` | **6 suites, 1,471 assertions, 0 failed, 0 skipped** |
-| `make asan` (ASan + UBSan) | clean — no leaks, no UB |
+| `make test` | **7 suites, 1,513 assertions, 0 failed, 0 skipped** |
+| `make asan` (ASan + UBSan) | clean — no leaks, no UB, all 7 suites |
 | `make tsan` (ThreadSanitizer) | **no data races** |
 | `make bench` | 41.9 M ops/s, p99 1 µs |
 | `tests/verify_uidmap.sh` | PASS — uid 0 inside, 65534 on host, 6/6 namespaces isolated |

@@ -48,6 +48,9 @@ static void usage(void) {
           "  --no-pidns         do not create a pid namespace\n"
           "  --no-proc          do not mount a fresh /proc\n"
           "  --hostname S       hostname inside the UTS namespace\n"
+          "  --seccomp M        syscall filter: off|audit|errno|kill (default errno)\n"
+          "  --deny-ptrace      forbid ptrace/process_vm_* (breaks gdb and ASan)\n"
+          "  --allow-nsops      permit setns/unshare in the guest\n"
           "\n"
           "encode-task options:\n"
           "  --task-id N  --tenant S  --engine ion|iron  --mem MB  --cpu US\n"
@@ -119,7 +122,21 @@ static int cmd_probe(void) {
     printf("facilities:\n");
     printf("  pidfd_open       %s\n", yn(caps.pidfd));
     printf("  signalfd         %s\n", yn(caps.signalfd));
+    printf("  seccomp-bpf      %s\n", yn(caps.seccomp));
+    printf("  RET_KILL_PROCESS %s%s\n", yn(caps.seccomp_kill),
+           caps.seccomp_kill ? "" : "  (kill mode would stop only the calling thread)");
     printf("  euid             %lld\n", (long long)geteuid());
+
+    vx_seccomp_policy_t pol;
+    vx_seccomp_policy_init(&pol);
+    const char *denied[96];
+    size_t n = vx_seccomp_denied_list(&pol, denied, sizeof(denied) / sizeof(denied[0]));
+    printf("seccomp policy (default): %s, %zu syscalls denied\n", vx_seccomp_mode_name(pol.mode),
+           n);
+    for (size_t i = 0; i < n && i < sizeof(denied) / sizeof(denied[0]); i++) {
+        printf("%s%s", i % 6 == 0 ? "  " : " ", denied[i]);
+        if (i % 6 == 5 || i + 1 == n) printf("\n");
+    }
 
     bool ready = caps.userns && caps.pidns && caps.cgroup_v2 && caps.cgroup_memory;
     printf("\nverdict: %s\n",
@@ -147,6 +164,9 @@ typedef struct {
     bool no_userns;
     bool no_pidns;
     bool no_proc;
+    const char *seccomp;
+    bool deny_ptrace;
+    bool allow_nsops;
 } opts_t;
 
 enum {
@@ -166,7 +186,10 @@ enum {
     OPT_PAYLOAD,
     OPT_NAME,
     OPT_SLOTS,
-    OPT_SLOT_BYTES
+    OPT_SLOT_BYTES,
+    OPT_SECCOMP,
+    OPT_DENY_PTRACE,
+    OPT_ALLOW_NSOPS
 };
 
 static const struct option long_opts[] = {{"task-id", required_argument, NULL, OPT_TASK_ID},
@@ -186,6 +209,9 @@ static const struct option long_opts[] = {{"task-id", required_argument, NULL, O
                                           {"name", required_argument, NULL, OPT_NAME},
                                           {"slots", required_argument, NULL, OPT_SLOTS},
                                           {"slot-bytes", required_argument, NULL, OPT_SLOT_BYTES},
+                                          {"seccomp", required_argument, NULL, OPT_SECCOMP},
+                                          {"deny-ptrace", no_argument, NULL, OPT_DENY_PTRACE},
+                                          {"allow-nsops", no_argument, NULL, OPT_ALLOW_NSOPS},
                                           {"help", no_argument, NULL, 'h'},
                                           {NULL, 0, NULL, 0}};
 
@@ -245,6 +271,15 @@ static int parse_opts(int argc, char **argv, opts_t *o) {
         case OPT_NO_PROC:
             o->no_proc = true;
             break;
+        case OPT_SECCOMP:
+            o->seccomp = optarg;
+            break;
+        case OPT_DENY_PTRACE:
+            o->deny_ptrace = true;
+            break;
+        case OPT_ALLOW_NSOPS:
+            o->allow_nsops = true;
+            break;
         case OPT_HOSTNAME:
             o->hostname = optarg;
             break;
@@ -298,6 +333,15 @@ static int cmd_run(int argc, char **argv) {
     if (o.no_pidns) spec.new_pid = false;
     if (o.no_proc) spec.mount_proc = false;
     if (o.hostname != NULL) spec.hostname = o.hostname;
+    if (o.seccomp != NULL) {
+        if (vx_seccomp_mode_parse(o.seccomp, &spec.seccomp.mode) != VX_OK) {
+            fprintf(stderr, "unknown --seccomp mode \"%s\" (want off|audit|errno|kill)\n",
+                    o.seccomp);
+            return 2;
+        }
+    }
+    if (o.deny_ptrace) spec.seccomp.allow_ptrace = false;
+    if (o.allow_nsops) spec.seccomp.deny_namespace_calls = false;
     if (o.host_uid >= 0) {
         spec.host_uid = (uid_t)o.host_uid;
         spec.host_gid = (gid_t)o.host_uid;

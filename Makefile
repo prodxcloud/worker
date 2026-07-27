@@ -24,12 +24,16 @@ ifneq ($(UNAME_S),Linux)
 $(error prodxcloud/worker targets Linux only (namespaces + cgroups v2); got $(UNAME_S))
 endif
 
-BUILD   := build
+# Each configuration gets its own directory.  Sharing one meant a sanitizer
+# build left instrumented object files behind, and the next plain `make` failed
+# to link with undefined __asan_* symbols — a confusing failure a long way from
+# its cause.
+BUILD   ?= build
 LIB     := $(BUILD)/libvxworker.a
 BIN     := $(BUILD)/vxworker
 
 LIB_SRCS := src/vx_error.c src/vx_log.c src/vx_task.c src/vx_ipc.c src/vx_cgroup.c \
-            src/vx_signal.c src/vx_sandbox.c
+            src/vx_signal.c src/vx_seccomp.c src/vx_sandbox.c
 LIB_OBJS := $(LIB_SRCS:src/%.c=$(BUILD)/%.o)
 
 TEST_SRCS := $(wildcard tests/test_*.c)
@@ -70,17 +74,27 @@ bench: $(BENCH_BINS)
 
 # ASan and UBSan together catch the whole class of bug this codebase is exposed
 # to: raw pointer arithmetic into an mmap'd region and packed-struct reads.
-asan: CFLAGS += -fsanitize=address,undefined -fno-omit-frame-pointer -O1
-asan: LDFLAGS += -fsanitize=address,undefined
-asan: clean $(TEST_BINS)
-	@bash tests/run_tests.sh $(TEST_BINS)
+#
+# Recursive make with its own BUILD dir, so an instrumented build never leaves
+# objects behind that a later plain build would try to link.
+asan:
+	@$(MAKE) --no-print-directory BUILD=build-asan \
+	    CFLAGS="$(CFLAGS) -fsanitize=address,undefined -fno-omit-frame-pointer -O1" \
+	    LDFLAGS="$(LDFLAGS) -fsanitize=address,undefined" run-tests
 
 # TSan validates the ring's memory ordering under real contention.  See
 # tests/run_tsan.sh for why the runner distinguishes a race report from TSan's
 # environment-dependent teardown abort.
-tsan: CFLAGS += -fsanitize=thread -fno-omit-frame-pointer -O1
-tsan: LDFLAGS += -fsanitize=thread
-tsan: clean $(BUILD)/test_ipc
+tsan:
+	@$(MAKE) --no-print-directory BUILD=build-tsan \
+	    CFLAGS="$(CFLAGS) -fsanitize=thread -fno-omit-frame-pointer -O1" \
+	    LDFLAGS="$(LDFLAGS) -fsanitize=thread" run-tsan
+
+.PHONY: run-tests run-tsan
+run-tests: $(TEST_BINS)
+	@bash tests/run_tests.sh $(TEST_BINS)
+
+run-tsan: $(BUILD)/test_ipc
 	@bash tests/run_tsan.sh $(BUILD)/test_ipc
 
 install: all
@@ -97,7 +111,7 @@ format:
 	clang-format -i include/*.h src/*.c tests/*.c bench/*.c
 
 clean:
-	rm -rf $(BUILD)
+	rm -rf build build-asan build-tsan
 
 help:
 	@echo "targets: all test check bench asan tsan install format clean"

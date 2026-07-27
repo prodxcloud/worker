@@ -121,7 +121,84 @@ One interface. No host devices, no route to the host network.
 
 ---
 
-## Two findings worth reading before you copy this code
+### Syscall filtering
+
+Namespaces and cgroups bound what a task can *reach* and *consume*. They say
+nothing about which system calls it may issue, and the kernel's syscall surface
+is itself attack surface. `vx_seccomp` closes that gap with a hand-assembled
+seccomp-bpf program — no libseccomp, consistent with the rest of the project.
+
+```
+$ vxworker probe
+facilities:
+  seccomp-bpf      yes
+  RET_KILL_PROCESS yes
+seccomp policy (default): errno, 51 syscalls denied
+  init_module finit_module delete_module create_module get_kernel_syms query_module
+  reboot kexec_load kexec_file_load settimeofday clock_settime clock_adjtime
+  adjtimex swapon swapoff mount umount2 pivot_root
+  chroot mount_setattr open_tree move_mount fsopen fsconfig
+  fsmount fspick open_by_handle_at name_to_handle_at setns unshare
+  sethostname setdomainname iopl ioperm modify_ldt bpf
+  perf_event_open userfaultfd fanotify_init lookup_dcookie kcmp add_key
+  request_key keyctl acct quotactl vhangup syslog
+  uselib nfsservctl personality
+```
+
+Four modes, because switching a filter on blind is how you discover in production
+that some dependency calls `keyctl` at startup:
+
+| `--seccomp` | Behaviour |
+|---|---|
+| `off` | no filter |
+| `audit` | allow, but log every denied call — run this first |
+| `errno` (default) | fail the call with `EPERM`; the guest keeps running |
+| `kill` | `SECCOMP_RET_KILL_PROCESS` — the guest dies of `SIGSYS` |
+
+```
+$ vxworker run -- sh -c 'mount -t tmpfs none /mnt; echo still alive'
+mount: /mnt: permission denied.
+still alive
+state=COMPLETED exit=0
+
+$ vxworker run --seccomp kill -- /bin/mount -t tmpfs none /mnt
+state=KILLED_SIGNAL exit=159 signal=31        # 31 == SIGSYS
+
+$ vxworker run -- sh -c 'grep Seccomp /proc/self/status'
+Seccomp:	2                                  # 2 == SECCOMP_MODE_FILTER
+Seccomp_filters:	2                          # ours, stacked on WSL's own
+```
+
+**A denylist, not an allowlist**, and that is deliberate. An allowlist is the
+stronger construction when you know what the guest is — you enumerate the forty
+syscalls your binary makes and refuse the rest. VxCloud does not know what the
+guest is: it runs arbitrary tenant code, and an allowlist tight enough to be
+worth having would break most of it, at which point operators switch it off and
+the security value is zero. So the filter denies what is unambiguously dangerous
+and what no ordinary program needs. Same shape as Docker's default profile, for
+the same reason. A real compile-and-run works untouched inside the sandbox:
+
+```
+$ vxworker run --mem 512 -- sh -c 'echo "int main(){return 42;}" >/tmp/a.c &&
+                                   gcc -o /tmp/a /tmp/a.c && /tmp/a; echo "exited $?"'
+exited 42
+```
+
+Two things it deliberately does **not** deny, both of which cost real security
+and are stated rather than hidden:
+
+- **`io_uring_setup`** — the `iron` engine is built on io_uring, so denying it
+  would deny the product. io_uring has a poor CVE record; this is residual risk.
+- **`ptrace` and `process_vm_readv/writev`** — see finding 3 below.
+
+The filter is installed in the child *between* the mount/hostname setup and
+`execvp()`. That ordering is required: the supervisor's own setup calls `mount(2)`
+and `sethostname(2)`, the very calls the guest must not have. It survives exec by
+design and cannot be lifted afterwards. `PR_SET_NO_NEW_PRIVS` is set first, which
+the kernel requires for an unprivileged filter and which independently stops a
+setuid binary reached through exec from gaining privilege.
+
+## Three findings worth reading before you copy this code
 
 Both were caught by tooling, not review, and both are the kind of bug that
 happily passes a green test suite.
@@ -166,6 +243,33 @@ relaxed ordering: the speculative read becomes well-defined while staying free,
 and correctness still rests on the post-CAS re-read.
 
 A green suite is not evidence of a correct lock-free protocol. Run the sanitizer.
+
+### 3. Denying `ptrace` breaks every ASan-built guest, so the default flipped
+
+The seccomp denylist originally refused `ptrace` — an obvious call to deny, since
+it is how one process reads another's memory. Then the test suite, run under
+AddressSanitizer *inside the sandbox*, started failing:
+
+```
+==1==HINT: LeakSanitizer does not work under ptrace (strace, gdb, etc)
+state=FAILED exit=1
+```
+
+LeakSanitizer calls `ptrace(PTRACE_ATTACH)` at exit to stop threads and scan for
+leaks. Denying `ptrace` therefore breaks **every** ASan-instrumented binary, plus
+gdb, perf, and any profiler a customer might run.
+
+Weighed against that, the security gain is close to nothing. Inside the sandbox's
+PID and user namespaces, `ptrace` can only reach the tenant's *own* processes —
+ones it already controls completely. Another tenant is unreachable: different PID
+namespace, different host uid. The classic escalation route, attaching to a setuid
+binary, is closed separately by `PR_SET_NO_NEW_PRIVS`.
+
+So `ptrace` is allowed by default, and `--deny-ptrace` is there for a hardened
+deployment that runs no debuggers. Docker's default profile reaches the same
+conclusion. The point worth keeping: the measurement changed the design, and it
+only surfaced because the sanitizer ran *through the sandbox* rather than beside
+it.
 
 ---
 
@@ -363,9 +467,10 @@ bench/bench_ipc.c        throughput and latency
 
 - **Linux only, by construction.** The build refuses any other kernel rather than
   pretending to be portable.
-- **No seccomp filter yet.** Namespaces and cgroups bound what a task can *reach*
-  and *consume*, not which syscalls it may issue. A `seccomp-bpf` allowlist is the
-  next layer.
+- **Syscall arguments are not filtered**, only syscall numbers. Docker permits
+  `personality(0)` while refusing `personality(PER_LINUX32)`; doing the same needs
+  BPF comparisons against `seccomp_data.args[]`, including the 64-bit-in-32-bit-
+  registers dance. `personality` is denied outright here instead.
 - **No rootfs pivot.** `spec.rootfs` is not implemented; the guest shares the
   host filesystem view apart from `/proc`. Pair with an overlay or an existing
   image runtime if you need a private root.

@@ -167,6 +167,9 @@ vx_status_t vx_sandbox_probe(vx_sandbox_caps_t *out) {
         close(sfd);
     }
 
+    out->seccomp = vx_seccomp_available();
+    out->seccomp_kill = vx_seccomp_kill_process_supported();
+
     return VX_OK;
 }
 
@@ -194,6 +197,7 @@ void vx_sandbox_spec_init(vx_sandbox_spec_t *spec) {
     spec->mount_proc = true;
     spec->loopback_up = true;
     spec->hostname = "vxworker";
+    vx_seccomp_policy_init(&spec->seccomp);
 }
 
 /* ------------------------------------------------------------------------- */
@@ -220,6 +224,7 @@ __attribute__((noreturn)) static void child_fail(int errfd, int stage, int err) 
 #define STAGE_LOOPBACK 7
 #define STAGE_CHDIR 8
 #define STAGE_EXEC 9
+#define STAGE_SECCOMP 10
 
 /* Bring "lo" up inside the new network namespace with SIOCSIFFLAGS.  A netns
  * starts with loopback administratively down, which breaks anything that binds
@@ -301,6 +306,15 @@ __attribute__((noreturn)) static void child_main(const vx_sandbox_spec_t *spec, 
 
     vx_signal_reset_for_child();
 
+    /* Install the syscall filter last, and deliberately so: everything above
+     * calls mount(2) and sethostname(2), which the filter denies. Applying it
+     * here means the supervisor's setup runs unhindered while the guest — which
+     * begins at the execvp below, and inherits the filter through it — cannot
+     * make those calls at all. */
+    if (spec->seccomp.mode != VX_SECCOMP_OFF) {
+        if (vx_seccomp_apply(&spec->seccomp) != VX_OK) child_fail(errfd, STAGE_SECCOMP, ENOSYS);
+    }
+
     if (spec->envp != NULL)
         execvpe(spec->argv[0], spec->argv, (char *const *)spec->envp);
     else
@@ -329,6 +343,8 @@ static const char *stage_name(int stage) {
         return "chdir";
     case STAGE_EXEC:
         return "execvp";
+    case STAGE_SECCOMP:
+        return "seccomp filter install";
     default:
         return "unknown stage";
     }
